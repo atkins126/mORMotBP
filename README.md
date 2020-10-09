@@ -5,39 +5,41 @@
 <h3>Boilerplate HTTP Server for Synopse mORMot Framework</h3>
 </div>
 
-This project is embedding of **HTML5 Boilerplate** v.7.3.0 files and settings into **Synopse mORMot Framework**
-  * [html5boilerplate.com][boilerplate]
-  * [synopse.info][synopse-mormot]
+This project is embedding of **HTML5 Boilerplate** assets and settings into **Synopse mORMot Framework**:
+  * [html5boilerplate.com][boilerplate]<br />HTML5 Boilerplate is a professional front-end template for building fast, robust, and adaptable web apps or sites. It's the product of over 10 years of iterative development and community knowledge. It does not impose a specific development philosophy or framework, so you're free to architect your code in the way that you want. Kick-start your project with the combined knowledge and effort of 100s of developers, all in one little package.
+  * [synopse.info][synopse-mormot]<br />Synopse mORMot is an Open Source Client-Server ORM SOA MVC framework for Delphi and FPC, targeting Windows/Linux for servers, and any platform for clients (including mobile or AJAX).
 
 ## Quick Start
 
-1. Download the latest mORMotBP [release][releases] from GitHub repository
-2. Add the next two **Pre-Build** events to create resource file `Assets.res` with all **h5bp** resources embedded:
+1. Download the latest mORMotBP [release][releases] from the GitHub repository
+2. Add `mORMotBP` directory to your IDE library path
+3. Add the next two **Pre-Build** events to create resource file `Assets.res` with all **h5bp** resources embedded:
   * `"..\Tools\assetslz" "$(PROJECTDIR)\Assets" "$(PROJECTDIR)\Assets.tmp"`
   * `"..\Tools\resedit" -D "$(PROJECTDIR)\Assets.res" rcdata ASSETS "$(PROJECTDIR)\Assets.tmp"`
-> Replace `"..\Tools"` to mORMorBP relative or full directory location. Also you can add Tools directory to your **PATH** environment veriable and use `assetslz` and `resedit` commands directly.
-3. Add `mORMotBP` to your library path or add `BoilerplateAssets.pas`, `BoilerplateHTTPServer.pas` files to the project
+> Replace `"..\Tools"` to mORMorBP relative or full directory location.
 4. Replace `TSQLHttpServer` instance creation with `TBoilerplateHTTPServer`
 5. Load assets to server instance by calling `YourHTTPServerInstance.LoadFromResource('Assets');`
 
 ## Features
 
-* Fully aligned with **HTML5 Boilerplate** HTTP configs with more than **50+** options and properties.
-* Designed for **Delphi 6** up to **Delphi 10.3 Rio**, **Kylix 3** (over CrossKylix), and **FPC**, targeting **Windows** or **Linux**, **32-bit** or **64-bit** architectures.
-* Embed all static assets into application file as highly compressed **synlz** archive (see `assetslz` and `resedit` tools). This allows to build single file distribution fully aligned with **Instant Deployment** approach.
+* Fully aligned with **HTML5 Boilerplate** HTTP configs with more than [**50+** options and properties][options].
+* Designed for **Delphi 6** up to **Delphi 10.4.1 Sydney**, **Kylix 3** (over CrossKylix), and **FPC**, targeting **Windows** or **Linux**, **32-bit** or **64-bit** architectures.
+* Embed all static assets into application file as highly compressed **synlz** archive (see `assetslz` and `resedit` tools). This allows to build single file distribution.
 * Save your cloud hosting **Disk IO** operations by return all static assets from mem-cached repository.
-* Don't spend **CPU cycles** to assets compression, all your assets will be pre-compressed by `assetslz` tool.
+* Don't spend **CPU cycles** to assets compression, all your assets will be pre-compressed by the `assetslz` tool.
 * Support **GZip Level 9** maximum compression.
 * Support **Zopfli** compression (save up to **5-15%** of traffic and delivery time compared to max GZip compression).
 * Support **Brotli** compression as per RFC 7932 (save another **15%-25%** of traffic and delivery time compared to Zopfli compression).
+* Support **Dynamic Brotli compression** (save about **~25%** CPU usage on 64-bit systems and **~10%** less delivery time and traffic utilization).
 * Ability to delegate compressed files transferring to low-level `HTTP.sys` high-performance library (see `.StaticRoot` property) and free your server threads for more interesting work.
 * Support `ETag/Last-Modified` or more user-friendly `Last-Modified/If-Modified-Since` cache strategies.
 * Server-side `Expires` or `Cache-Control: max-age` cache strategies.
 * Different cache busting strategies (see `bpoEnableCacheBusting` and `bpoEnableCacheBustingBeforeExt` options).
 * Fix well-known mangled **Accept-Encoding** values in HTTP headers.
-* Block access to files that can expose sensitive information (see `bpoDelegateBlocked` option).
+* Block access to files that can expose sensitive information (see `bpoDelegateHidden` and `bpoDelegateBlocked` options).
 * Apply many HTTP headers corrections following **HTML5 Boilerplate** settings.
 * Support **Content Security Policy** Level 2 / Level 3 (see `CSP.pas` unit for details).
+* Support **1490 MIME Types** file extensions combined from IANA, Apache, and Mozilla.
 * You can safely replace anywhere your **TSQLHttpServer** with `TBoilerplateHTTPServer = class(TSQLHttpServer)`.
 
 ## Lazarus Free Pascal support
@@ -76,7 +78,7 @@ Please see the Build Events [readme][build-events-readme] for details.
               
 ## Recommended `DEBUG` configuration
 
-Due to 80 times slower compression nature of Zopfli algorithm it is not reasonable to use it during project development and debug.
+Due to 80 times slower compression nature of Zopfli algorithm it is not reasonable to use it during development and debug.
 So for all debug configurations you can use fast and light level 1 compression with `-GZ1 -B1` options of **assetslz** tool:
   * `"..\Tools\assetslz" -GZ1 -B1 "$(PROJECTDIR)\Assets" "$(PROJECTDIR)\Assets.tmp"`
   * `"..\Tools\resedit" -D "$(PROJECTDIR)\Assets.res" rcdata ASSETS "$(PROJECTDIR)\Assets.tmp"`
@@ -97,6 +99,36 @@ If you use `HTTP.sys` API on Windows Server add or modify the next registry key 
 Section: `SYSTEM\CurrentControlSet\Services\HTTP\Parameters`
 
 Key: `DisableServerHeader: DWORD = 2`
+
+## Enable dynamic Brotli compression
+
+Unfortunatelly default mORMot HTTP Server always use first registered compression in case when several compression options are available.
+To enable Brotli support for on-the-fly generated (HTML, JSON, XML, etc.) content do the next:
+
+Turn off the default DEFLATE compression in `mORMotHttpServer.pas` unit (line 76):
+
+Before
+```delphi
+{$define COMPRESSDEFLATE}
+```
+
+After
+```
+{.$define COMPRESSDEFLATE}
+```
+
+Then register HTTP Server compressions in `Brotli, GZip` order:
+
+```delphi
+
+uses
+  SynZip,
+  Brotli;
+...
+
+    HttpServer.RegisterCompress(CompressBrotli);
+    HttpServer.RegisterCompress(CompressGZip);
+```
 
 ## Advanced `TAssets` usage
 
@@ -166,6 +198,7 @@ Feel free to contact me at **@gmail.com**: **eugene.ilyin**
 [boilerplate]: https://html5boilerplate.com
 [synopse-mormot]: https://synopse.info/fossil/wiki?name=SQLite3+Framework
 [releases]: https://github.com/eugeneilyin/mORMotBP/releases
+[options]: https://github.com/eugeneilyin/mORMotBP/blob/master/BoilerplateHTTPServer.pas#L130
 [dist]: /Dist
 [security-headers]: https://securityheaders.com
 [kiran-kurapaty]: https://kurapaty.wordpress.com/about-2
