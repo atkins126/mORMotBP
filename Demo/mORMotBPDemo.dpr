@@ -60,7 +60,7 @@ var
   AutoModel, AutoServer, AutoHTTPServer: IAutoFree;
 begin
   AutoModel := TAutoFree.One(Model, TSQLModel.Create([]));
-  AutoServer :=TAutoFree.One(Server, TSQLRestServerFullMemory.Create(Model));
+  AutoServer := TAutoFree.One(Server, TSQLRestServerFullMemory.Create(Model));
   AutoHTTPServer := TAutoFree.One(HTTPServer, TBoilerplateHTTPServer.Create(
     '8092', Server, '+', HTTP_DEFAULT_MODE, 32, secNone, '/'));
 
@@ -75,4 +75,8 @@ begin
   Writeln('');
   Writeln('Press [Enter] to close the server.');
   ReadLn;
+
+  // There is a known mORMotHTTPServer issue with a termination sequesnce
+  // So we can detach DBServers from HTTPServer before destruction
+  {$IFDEF FPC} HTTPServer.RemoveServer(Server); {$ENDIF}
 end.
